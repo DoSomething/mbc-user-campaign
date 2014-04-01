@@ -14,16 +14,19 @@ require_once __DIR__ . '/vendor/autoload.php';
 require __DIR__ . '/mb-secure-config.inc';
 require __DIR__ . '/mb-config.inc';
 
-class MBC_UserCampaignActivity
+// @todo: Move MBC_UserAPICampaignActivity to class.inc file
+// require __DIR__ . '/MBC_UserAPICampaignActivity.class.inc';
+
+class MBC_UserAPICampaignActivity
 {
-  
+
   /**
    * Message Broker object that details the connection to RabbitMQ.
    *
    * @var object
    */
   private $MessageBroker;
-  
+
   /**
    * Constructor for MBC_UserCampaignActivity
    *
@@ -42,15 +45,32 @@ class MBC_UserCampaignActivity
     $this->MessageBroker = new MessageBroker($credentials, $config);
     $connection = $this->MessageBroker->connection;
     $this->channel = $connection->channel();
-    
+
     // Exchange
     $this->channel = $this->MessageBroker->setupExchange($config['exchange']['name'], $config['exchange']['type'], $this->channel);
 
     // Queue - userCampaignActivityQueue
-    list($this->channel, ) = $this->MessageBroker->setupQueue($config['queue']['userCampaignActivity']['name'], $this->channel);
+    list($this->channel, ) = $this->MessageBroker->setupQueue($config['queue']['userAPICampaignActivity']['name'], $this->channel);
 
     // Queue binding
-    $this->channel->queue_bind($config['queue']['userCampaignActivity']['name'], $config['exchange']['name'], $config['queue']['userCampaignActivity']['bindingKey']);
+    $this->channel->queue_bind($config['queue']['userAPICampaignActivity']['name'], $config['exchange']['name'], $config['queue']['userAPICampaignActivity']['bindingKey']);
+
+    $this->channel->basic_consume($config['queue']['userAPICampaignActivity']['name'], '', FALSE, FALSE, FALSE, FALSE, array($this, 'updateUserAPI'));
+  }
+
+  /**
+   * Submit user campaign activity to UserAPI
+   *
+   * @param array $payload
+   *   The contents of the queue entry
+   */
+  private function updateUserAPI($payload) {
+
+    $payloadDetails = unserialize($payload->body);
+
+    // DB stuff
+
+    $payload->delivery_info['channel']->basic_ack($payload->delivery_info['delivery_tag']);
 
   }
 
@@ -64,7 +84,6 @@ $credentials = array(
   'password' => getenv("RABBITMQ_PASSWORD"),
   'vhost' => getenv("RABBITMQ_VHOST"),
 );
-$credentials['mailchimp_apikey'] = getenv("MAILCHIMP_APIKEY");
 
 $config = array(
   'exchange' => array(
@@ -75,16 +94,16 @@ $config = array(
     'auto_delete' => getenv("MB_TRANSACTIONAL_EXCHANGE_AUTO_DELETE"),
   ),
   'queue' => array(
-    'userCampaignActivity' => array(
-      'name' => getenv("MB_USER_CAMPAIGN_ACTIVTY_QUEUE"),
-      'passive' => getenv("MB_USER_CAMPAIGN_ACTIVTY_QUEUE_PASSIVE"),
-      'durable' => getenv("MB_USER_CAMPAIGN_ACTIVTY_QUEUE_DURABLE"),
-      'exclusive' => getenv("MB_USER_CAMPAIGN_ACTIVTY_QUEUE_EXCLUSIVE"),
-      'auto_delete' => getenv("MB_USER_CAMPAIGN_ACTIVTY_QUEUE_AUTO_DELETE"),
-      'bindingKey' => getenv("MB_USER_CAMPAIGN_ACTIVTY_QUEUE_TOPIC_MB_TRANSACTIONAL_EXCHANGE_PATTERN"),
+    'userAPICampaignActivity' => array(
+      'name' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE"),
+      'passive' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_PASSIVE"),
+      'durable' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_DURABLE"),
+      'exclusive' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_EXCLUSIVE"),
+      'auto_delete' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_AUTO_DELETE"),
+      'bindingKey' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_TOPIC_MB_TRANSACTIONAL_EXCHANGE_PATTERN"),
     ),
   ),
 );
 
 // Kick off
-$mbcUserRegistration = new MBC_UserCampaignActivity($credentials, $config);
+$mbcUserRegistration = new MBC_UserAPICampaignActivity($credentials, $config);
