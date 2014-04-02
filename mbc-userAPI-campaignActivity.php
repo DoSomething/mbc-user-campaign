@@ -43,19 +43,8 @@ class MBC_UserAPICampaignActivity
 
     // Setup RabbitMQ connection
     $this->MessageBroker = new MessageBroker($credentials, $config);
-    $connection = $this->MessageBroker->connection;
-    $this->channel = $connection->channel();
 
-    // Exchange
-    $this->channel = $this->MessageBroker->setupExchange($config['exchange']['name'], $config['exchange']['type'], $this->channel);
-
-    // Queue - userCampaignActivityQueue
-    list($this->channel, ) = $this->MessageBroker->setupQueue($config['queue']['userAPICampaignActivity']['name'], $this->channel);
-
-    // Queue binding
-    $this->channel->queue_bind($config['queue']['userAPICampaignActivity']['name'], $config['exchange']['name'], $config['queue']['userAPICampaignActivity']['bindingKey']);
-
-    $this->channel->basic_consume($config['queue']['userAPICampaignActivity']['name'], '', FALSE, FALSE, FALSE, FALSE, array($this, 'updateUserAPI'));
+    $this->MessageBroker->consumeMessage(array($this, 'updateUserAPI'));
   }
 
   /**
