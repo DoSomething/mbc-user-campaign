@@ -57,7 +57,24 @@ class MBC_UserAPICampaignActivity
 
     $payloadDetails = unserialize($payload->body);
 
-    // DB stuff
+    $post = array(
+      'email' => 'dlee@dosomething.org',
+      'campaigns' => array(
+        0 => array(
+          'nid' => 123,
+          'signup' => '01-01-2014',
+          'reportback' => '02-02-2014'
+        ),
+      )
+    );
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $userApiUrl);
+    curl_setopt($ch, CURLOPT_POST, count($post));
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    $result = curl_exec($ch);
+    curl_close($ch);
 
     $payload->delivery_info['channel']->basic_ack($payload->delivery_info['delivery_tag']);
 
