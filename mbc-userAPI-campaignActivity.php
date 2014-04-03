@@ -57,17 +57,25 @@ class MBC_UserAPICampaignActivity
 
     $payloadDetails = unserialize($payload->body);
 
+    // There will only ever be one campaign entry in the payload
     $post = array(
-      'email' => 'dlee@dosomething.org',
+      'email' => $payloadDetails['email'],
       'campaigns' => array(
         0 => array(
-          'nid' => 123,
-          'signup' => '01-01-2014',
-          'reportback' => '02-02-2014'
+          'nid' => $payloadDetails['event_id'],
         ),
       )
     );
 
+    // Campaign signup or reportback?
+    if ($payloadDetails['activity'] == 'campaign_reportback') {
+      $post['campaigns'][0]['reportback'] = date('m-d-Y', $payloadDetails['activity_timestamp']);
+    }
+    else {
+      $post['campaigns'][0]['signup'] = date('m-d-Y', $payloadDetails['activity_timestamp']);
+    }
+
+    $userApiUrl = getenv('DS_USER_API_HOST') . ':' . getenv('DS_USER_API_PORT') . '/user';
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $userApiUrl);
     curl_setopt($ch, CURLOPT_POST, count($post));
