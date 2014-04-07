@@ -21,39 +21,12 @@ class MBC_UserAPICampaignActivity
 {
 
   /**
-   * Message Broker object that details the connection to RabbitMQ.
-   *
-   * @var object
-   */
-  private $MessageBroker;
-
-  /**
-   * Constructor for MBC_UserCampaignActivity
-   *
-   * @param array $credentials
-   *   Secret settings from mb-secure-config.inc
-   *
-   * @param array $config
-   *   Configuration settings from mb-config.inc
-   */
-  public function __construct($credentials, $config) {
-
-    $this->config = $config;
-    $this->credentials = $credentials;
-
-    // Setup RabbitMQ connection
-    $this->MessageBroker = new MessageBroker($credentials, $config);
-
-    $this->MessageBroker->consumeMessage(array($this, 'updateUserAPI'));
-  }
-
-  /**
-   * Submit user campaign activity to UserAPI
+   * Submit user campaign activity to the UserAPI
    *
    * @param array $payload
    *   The contents of the queue entry
    */
-  private function updateUserAPI($payload) {
+  public function updateUserAPI($payload) {
 
     $payloadDetails = unserialize($payload->body);
 
@@ -84,8 +57,8 @@ class MBC_UserAPICampaignActivity
     $result = curl_exec($ch);
     curl_close($ch);
 
-    $payload->delivery_info['channel']->basic_ack($payload->delivery_info['delivery_tag']);
-
+    // Remove entry from queue
+    MessageBroker::sendAck($payload);
   }
 
 }
@@ -117,7 +90,9 @@ $config = array(
       'bindingKey' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_TOPIC_MB_TRANSACTIONAL_EXCHANGE_PATTERN"),
     ),
   ),
+  'routingKey' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_ROUTING_KEY"),
 );
 
 // Kick off
-$mbcUserRegistration = new MBC_UserAPICampaignActivity($credentials, $config);
+$mb = new MessageBroker($credentials, $config);
+$mb->consumeMessage(array(new MBC_UserAPICampaignActivity(), 'updateUserAPI'));
