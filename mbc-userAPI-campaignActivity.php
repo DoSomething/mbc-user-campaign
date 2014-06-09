@@ -42,10 +42,10 @@ class MBC_UserAPICampaignActivity
 
     // Campaign signup or reportback?
     if ($payloadDetails['activity'] == 'campaign_reportback') {
-      $post['campaigns'][0]['reportback'] = date('m-d-Y', $payloadDetails['activity_timestamp']);
+      $post['campaigns'][0]['reportback'] = $payloadDetails['activity_timestamp'];
     }
     else {
-      $post['campaigns'][0]['signup'] = date('m-d-Y', $payloadDetails['activity_timestamp']);
+      $post['campaigns'][0]['signup'] = $payloadDetails['activity_timestamp'];
     }
 
     $userApiUrl = getenv('DS_USER_API_HOST') . ':' . getenv('DS_USER_API_PORT') . '/user';
