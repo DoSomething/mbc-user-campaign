@@ -1,7 +1,7 @@
 {
     "name": "https://github.com/DoSomething/mbc-userAPI-campaignActivity",
     "type": "project",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "A consumer app for the Message Broker system that consumes entries on the userAPICampaignActivityQueue to make entries / updates to the UserAPI / database.",
     "keywords": ["message broker"],
     "homepage": "https://github.com/DoSomething/mbc-user-campaign",

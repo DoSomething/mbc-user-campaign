@@ -37,6 +37,7 @@ class MBC_UserAPICampaignActivity
         0 => array(
           'nid' => $payloadDetails['event_id'],
         ),
+      'subscribed' => 1,
       )
     );
 
