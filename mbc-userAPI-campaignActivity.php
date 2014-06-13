@@ -33,11 +33,11 @@ class MBC_UserAPICampaignActivity
     // There will only ever be one campaign entry in the payload
     $post = array(
       'email' => $payloadDetails['email'],
+      'subscribed' => 1,
       'campaigns' => array(
         0 => array(
           'nid' => $payloadDetails['event_id'],
         ),
-      'subscribed' => 1,
       )
     );
 
@@ -48,6 +48,8 @@ class MBC_UserAPICampaignActivity
     else {
       $post['campaigns'][0]['signup'] = $payloadDetails['activity_timestamp'];
     }
+
+    echo '------- mbp-userAPI-campaignActivity - MBC_UserAPICampaignActivity: $post: ' . print_r($post, TRUE) . ' - ' . date('D M j G:i:s T Y') . ' -------', "\n";
 
     $userApiUrl = getenv('DS_USER_API_HOST') . ':' . getenv('DS_USER_API_PORT') . '/user';
     $ch = curl_init();
