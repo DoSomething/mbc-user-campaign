@@ -60,8 +60,6 @@ class MBC_UserAPICampaignActivity
     $result = curl_exec($ch);
     curl_close($ch);
 
-    // Remove entry from queue
-    MessageBroker::sendAck($payload);
   }
 
 }
