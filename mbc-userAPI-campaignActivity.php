@@ -49,7 +49,7 @@ class MBC_UserAPICampaignActivity
       $post['campaigns'][0]['signup'] = $payloadDetails['activity_timestamp'];
     }
 
-    echo '------- mbp-userAPI-campaignActivity - MBC_UserAPICampaignActivity: $post: ' . print_r($post, TRUE) . ' - ' . date('D M j G:i:s T Y') . ' -------', "\n";
+    echo '------- mbc-userAPI-campaignActivity - MBC_UserAPICampaignActivity: $post: ' . print_r($post, TRUE) . ' - ' . date('D M j G:i:s T Y') . ' -------', "\n";
 
     $userApiUrl = getenv('DS_USER_API_HOST') . ':' . getenv('DS_USER_API_PORT') . '/user';
     $ch = curl_init();
@@ -60,8 +60,6 @@ class MBC_UserAPICampaignActivity
     $result = curl_exec($ch);
     curl_close($ch);
 
-    // Remove entry from queue
-    MessageBroker::sendAck($payload);
   }
 
 }
