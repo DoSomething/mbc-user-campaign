@@ -3,7 +3,7 @@
  * mbc-user-campaign.php
  *
  * Collect user campaign activity from the userAPICampaignActivityQueue. Update the
- * UserAPI / database with user activity.
+ * UserAPI / database with user campaign activity.
  */
 
 date_default_timezone_set('America/New_York');
@@ -41,6 +41,11 @@ class MBC_UserAPICampaignActivity
         ),
       )
     );
+
+    if (!(isset($payloadDetails['activity_timestamp']) && $payloadDetails['activity_timestamp'] != '' && is_int($payloadDetails['activity_timestamp']))) {
+      echo 'Invalid activity_timestamp value: ' . print_r($payloadDetails, TRUE), PHP_EOL;
+      $payloadDetails['activity_timestamp'] = time();
+    }
 
     // Campaign signup or reportback?
     if ($payloadDetails['activity'] == 'campaign_reportback') {
@@ -95,6 +100,7 @@ $config = array(
   ),
   'routingKey' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_ROUTING_KEY"),
 );
+
 
 // Kick off
 $mb = new MessageBroker($credentials, $config);
