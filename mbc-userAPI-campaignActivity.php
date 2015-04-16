@@ -48,7 +48,11 @@ $config = array(
   'routingKey' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_ROUTING_KEY"),
 );
 
+$settings = array(
+  'stathat_ez_key' => getenv("STATHAT_EZKEY"),
+);
+
 
 // Kick off
 $mb = new MessageBroker($credentials, $config);
-$mb->consumeMessage(array(new MBC_UserAPICampaignActivity(), 'updateUserAPI'));
+$mb->consumeMessage(array(new MBC_UserAPICampaignActivity($mb, $settings), 'updateUserAPI'));
