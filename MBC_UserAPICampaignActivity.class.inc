@@ -42,7 +42,7 @@ class MBC_UserAPICampaignActivity
 
     // Stathat
     $this->statHat = new StatHat($this->settings['stathat_ez_key'], 'mbc-userAPI-campaignActivity:');
-    $this->statHat->setIsProduction(TRUE);
+    $this->statHat->setIsProduction($settings['use_stathat_tracking']);
   }
 
   /**
