@@ -7,16 +7,15 @@
  */
 
 date_default_timezone_set('America/New_York');
+
 // Load up the Composer autoload magic
 require_once __DIR__ . '/vendor/autoload.php';
+use DoSomething\MB_Toolbox\MB_Configuration;
 
 // Load configuration settings common to the Message Broker system
 // symlinks in the project directory point to the actual location of the files
 require __DIR__ . '/mb-secure-config.inc';
-require __DIR__ . '/mb-config.inc';
-
 require __DIR__ . '/MBC_UserAPICampaignActivity.class.inc';
-
 
 // Settings
 $credentials = array(
@@ -27,33 +26,35 @@ $credentials = array(
   'vhost' => getenv("RABBITMQ_VHOST"),
 );
 
-$config = array(
-  'exchange' => array(
-    'name' => getenv("MB_TRANSACTIONAL_EXCHANGE"),
-    'type' => getenv("MB_TRANSACTIONAL_EXCHANGE_TYPE"),
-    'passive' => getenv("MB_TRANSACTIONAL_EXCHANGE_PASSIVE"),
-    'durable' => getenv("MB_TRANSACTIONAL_EXCHANGE_DURABLE"),
-    'auto_delete' => getenv("MB_TRANSACTIONAL_EXCHANGE_AUTO_DELETE"),
-  ),
-  'queue' => array(
-    'userAPICampaignActivity' => array(
-      'name' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE"),
-      'passive' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_PASSIVE"),
-      'durable' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_DURABLE"),
-      'exclusive' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_EXCLUSIVE"),
-      'auto_delete' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_AUTO_DELETE"),
-      'bindingKey' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_TOPIC_MB_TRANSACTIONAL_EXCHANGE_PATTERN"),
-    ),
-  ),
-  'routingKey' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_ROUTING_KEY"),
-);
-
 $settings = array(
   'stathat_ez_key' => getenv("STATHAT_EZKEY"),
   'use_stathat_tracking' => getenv('USE_STAT_TRACKING'),
   'ds_user_api_host' => getenv('DS_USER_API_HOST'),
   'ds_user_api_port' => getenv('DS_USER_API_PORT'),
 );
+
+$config = array();
+$source = __DIR__ . '/messagebroker-config/mb_config.json';
+$mb_config = new MB_Configuration($source, $settings);
+$transactionalExchange = $mb_config->exchangeSettings('transactionalExchange');
+
+$config['exchange'] = array(
+  'name' => $transactionalExchange->name,
+  'type' => $transactionalExchange->type,
+  'passive' => $transactionalExchange->passive,
+  'durable' => $transactionalExchange->durable,
+  'auto_delete' => $transactionalExchange->auto_delete,
+);
+foreach ($transactionalExchange->queues->userAPICampaignActivityQueue->binding_patterns as $binding_key) {
+  $config['queue'][] = array(
+    'name' => $transactionalExchange->queues->userAPICampaignActivityQueue->name,
+    'passive' => $transactionalExchange->queues->userAPICampaignActivityQueue->passive,
+    'durable' =>  $transactionalExchange->queues->userAPICampaignActivityQueue->durable,
+    'exclusive' =>  $transactionalExchange->queues->userAPICampaignActivityQueue->exclusive,
+    'auto_delete' =>  $transactionalExchange->queues->userAPICampaignActivityQueue->auto_delete,
+    'bindingKey' => $binding_key,
+  );
+}
 
 
 // Kick off
