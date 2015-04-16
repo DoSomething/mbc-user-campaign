@@ -2,67 +2,20 @@
 /**
  * mbc-user-campaign.php
  *
- * Collect user campaign activity from the userCampaignActivityQueue. Update the
- * UserAPI / database with user activity.
+ * Collect user campaign activity from the userAPICampaignActivityQueue. Update the
+ * UserAPI / database with user campaign activity.
  */
+
+date_default_timezone_set('America/New_York');
 
 // Load up the Composer autoload magic
 require_once __DIR__ . '/vendor/autoload.php';
+use DoSomething\MB_Toolbox\MB_Configuration;
 
 // Load configuration settings common to the Message Broker system
 // symlinks in the project directory point to the actual location of the files
 require __DIR__ . '/mb-secure-config.inc';
-require __DIR__ . '/mb-config.inc';
-
-// @todo: Move MBC_UserAPICampaignActivity to class.inc file
-// require __DIR__ . '/MBC_UserAPICampaignActivity.class.inc';
-
-class MBC_UserAPICampaignActivity
-{
-
-  /**
-   * Submit user campaign activity to the UserAPI
-   *
-   * @param array $payload
-   *   The contents of the queue entry
-   */
-  public function updateUserAPI($payload) {
-
-    $payloadDetails = unserialize($payload->body);
-
-    // There will only ever be one campaign entry in the payload
-    $post = array(
-      'email' => $payloadDetails['email'],
-      'subscribed' => 1,
-      'campaigns' => array(
-        0 => array(
-          'nid' => $payloadDetails['event_id'],
-        ),
-      )
-    );
-
-    // Campaign signup or reportback?
-    if ($payloadDetails['activity'] == 'campaign_reportback') {
-      $post['campaigns'][0]['reportback'] = $payloadDetails['activity_timestamp'];
-    }
-    else {
-      $post['campaigns'][0]['signup'] = $payloadDetails['activity_timestamp'];
-    }
-
-    echo '------- mbc-userAPI-campaignActivity - MBC_UserAPICampaignActivity: $post: ' . print_r($post, TRUE) . ' - ' . date('D M j G:i:s T Y') . ' -------', "\n";
-
-    $userApiUrl = getenv('DS_USER_API_HOST') . ':' . getenv('DS_USER_API_PORT') . '/user';
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $userApiUrl);
-    curl_setopt($ch, CURLOPT_POST, count($post));
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    $result = curl_exec($ch);
-    curl_close($ch);
-
-  }
-
-}
+require __DIR__ . '/MBC_UserAPICampaignActivity.class.inc';
 
 // Settings
 $credentials = array(
@@ -73,27 +26,37 @@ $credentials = array(
   'vhost' => getenv("RABBITMQ_VHOST"),
 );
 
-$config = array(
-  'exchange' => array(
-    'name' => getenv("MB_TRANSACTIONAL_EXCHANGE"),
-    'type' => getenv("MB_TRANSACTIONAL_EXCHANGE_TYPE"),
-    'passive' => getenv("MB_TRANSACTIONAL_EXCHANGE_PASSIVE"),
-    'durable' => getenv("MB_TRANSACTIONAL_EXCHANGE_DURABLE"),
-    'auto_delete' => getenv("MB_TRANSACTIONAL_EXCHANGE_AUTO_DELETE"),
-  ),
-  'queue' => array(
-    'userAPICampaignActivity' => array(
-      'name' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE"),
-      'passive' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_PASSIVE"),
-      'durable' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_DURABLE"),
-      'exclusive' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_EXCLUSIVE"),
-      'auto_delete' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_AUTO_DELETE"),
-      'bindingKey' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_QUEUE_TOPIC_MB_TRANSACTIONAL_EXCHANGE_PATTERN"),
-    ),
-  ),
-  'routingKey' => getenv("MB_USER_API_CAMPAIGN_ACTIVITY_ROUTING_KEY"),
+$settings = array(
+  'stathat_ez_key' => getenv("STATHAT_EZKEY"),
+  'use_stathat_tracking' => getenv('USE_STAT_TRACKING'),
+  'ds_user_api_host' => getenv('DS_USER_API_HOST'),
+  'ds_user_api_port' => getenv('DS_USER_API_PORT'),
 );
+
+$config = array();
+$source = __DIR__ . '/messagebroker-config/mb_config.json';
+$mb_config = new MB_Configuration($source, $settings);
+$transactionalExchange = $mb_config->exchangeSettings('transactionalExchange');
+
+$config['exchange'] = array(
+  'name' => $transactionalExchange->name,
+  'type' => $transactionalExchange->type,
+  'passive' => $transactionalExchange->passive,
+  'durable' => $transactionalExchange->durable,
+  'auto_delete' => $transactionalExchange->auto_delete,
+);
+foreach ($transactionalExchange->queues->userAPICampaignActivityQueue->binding_patterns as $binding_key) {
+  $config['queue'][] = array(
+    'name' => $transactionalExchange->queues->userAPICampaignActivityQueue->name,
+    'passive' => $transactionalExchange->queues->userAPICampaignActivityQueue->passive,
+    'durable' =>  $transactionalExchange->queues->userAPICampaignActivityQueue->durable,
+    'exclusive' =>  $transactionalExchange->queues->userAPICampaignActivityQueue->exclusive,
+    'auto_delete' =>  $transactionalExchange->queues->userAPICampaignActivityQueue->auto_delete,
+    'bindingKey' => $binding_key,
+  );
+}
+
 
 // Kick off
 $mb = new MessageBroker($credentials, $config);
-$mb->consumeMessage(array(new MBC_UserAPICampaignActivity(), 'updateUserAPI'));
+$mb->consumeMessage(array(new MBC_UserAPICampaignActivity($mb, $settings), 'updateUserAPI'));
