@@ -4,6 +4,9 @@
  * entries that match the campaign.*.* binding.
  */
 
+use DoSomething\MB_Toolbox\MB_Toolbox;
+use DoSomething\MBStatTracker\StatHat;
+
 class MBC_UserAPICampaignActivity
 {
 
@@ -78,16 +81,22 @@ class MBC_UserAPICampaignActivity
 
     echo '------- mbc-userAPI-campaignActivity - MBC_UserAPICampaignActivity: $post: ' . print_r($post, TRUE) . ' - ' . date('D M j G:i:s T Y') . ' -------', PHP_EOL;
 
-    $userApiUrl = getenv('DS_USER_API_HOST') . ':' . getenv('DS_USER_API_PORT') . '/user';
+    $curlUrl = $this->settings['ds_user_api_host'];
+    $port = $this->settings['ds_user_api_port'];
+    if ($port != 0) {
+      $curlUrl .= ":$port";
+    }
+    $curlUrl .= '/user';
+    $result = $this->toolbox->curlPOST($curlUrl, $post);
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $userApiUrl);
-    curl_setopt($ch, CURLOPT_POST, count($post));
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    $result = curl_exec($ch);
-    curl_close($ch);
-
+    if ($result == TRUE) {
+      echo 'Updated campaign activity for email: ' . $post['email'], PHP_EOL;
+      $this->statHat->addStatName('success');
+    }
+    else {
+      echo 'FAILED to update campaign activity for emai: ' . $post['email'], PHP_EOL;
+      $this->statHat->addStatName('update failed');
+    }
   }
 
 }
