@@ -1,10 +1,46 @@
 <?php
 /*
- *
+ * MBC_UserAPICampaignActivity.class.in: Used to process the transactionalQueue
+ * entries that match the campaign.*.* binding.
  */
 
 class MBC_UserAPICampaignActivity
 {
+
+  /**
+   * Message Broker connection to RabbitMQ
+   */
+  private $messageBroker;
+
+  /**
+   * Setting from external services - Mailchimp.
+   *
+   * @var array
+   */
+  private $settings;
+
+  /**
+   * Setting from external services - Mailchimp.
+   *
+   * @var array
+   */
+  private $statHat;
+
+  /**
+   * Constructor for MBC_TransactionalEmail
+   *
+   * @param array $settings
+   *   Settings from external services - StatHat
+   */
+  public function __construct($messageBroker, $settings) {
+
+    $this->messageBroker = $messageBroker;
+    $this->settings = $settings;
+
+    // Stathat
+    $this->statHat = new StatHat($this->settings['stathat_ez_key'], 'mbc-userAPI-campaignActivity:');
+    $this->statHat->setIsProduction(TRUE);
+  }
 
   /**
    * Submit user campaign activity to the UserAPI
