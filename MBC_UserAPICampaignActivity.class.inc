@@ -40,9 +40,9 @@ class MBC_UserAPICampaignActivity
     $this->messageBroker = $messageBroker;
     $this->settings = $settings;
 
-    // Stathat
-    $this->statHat = new StatHat($this->settings['stathat_ez_key'], 'mbc-userAPI-campaignActivity:');
-    $this->statHat->setIsProduction($settings['use_stathat_tracking']);
+    $this->toolbox = new MB_Toolbox($settings);
+    $this->statHat = new StatHat($settings['stathat_ez_key'], 'mbc-userAPI-campaignActivity:');
+    $this->statHat->setIsProduction($settings['use_stathat_tracking'] ? $settings['use_stathat_tracking'] : FALSE);
   }
 
   /**
@@ -79,8 +79,6 @@ class MBC_UserAPICampaignActivity
       $post['campaigns'][0]['signup'] = $payloadDetails['activity_timestamp'];
     }
 
-    echo '------- mbc-userAPI-campaignActivity - MBC_UserAPICampaignActivity: $post: ' . print_r($post, TRUE) . ' - ' . date('D M j G:i:s T Y') . ' -------', PHP_EOL;
-
     $curlUrl = $this->settings['ds_user_api_host'];
     $port = $this->settings['ds_user_api_port'];
     if ($port != 0) {
@@ -89,14 +87,16 @@ class MBC_UserAPICampaignActivity
     $curlUrl .= '/user';
     $result = $this->toolbox->curlPOST($curlUrl, $post);
 
-    if ($result == TRUE) {
-      echo 'Updated campaign activity for email: ' . $post['email'], PHP_EOL;
+    $this->statHat->clearAddedStatNames();
+    if ($result[1] == 200) {
       $this->statHat->addStatName('success');
     }
     else {
-      echo 'FAILED to update campaign activity for emai: ' . $post['email'], PHP_EOL;
+      echo '** FAILED to update campaign activity for emai: ' . $post['email'], PHP_EOL;
+      echo '------- mbc-userAPI-campaignActivity - MBC_UserAPICampaignActivity: $post: ' . print_r($post, TRUE) . ' - ' . date('D M j G:i:s T Y') . ' -------', PHP_EOL . PHP_EOL;
       $this->statHat->addStatName('update failed');
     }
+    $this->statHat->reportCount(1);
   }
 
 }
