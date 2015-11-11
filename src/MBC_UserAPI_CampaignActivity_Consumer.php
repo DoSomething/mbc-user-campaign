@@ -4,99 +4,115 @@
  * entries that match the campaign.*.* binding.
  */
 
-use DoSomething\MB_Toolbox\MB_Toolbox;
-use DoSomething\MBStatTracker\StatHat;
+namespace DoSomething\MBC_UserAPI_CampaignActivity;
 
-class MBC_UserAPICampaignActivity
+use DoSomething\MB_Toolbox\MB_Configuration;
+use DoSomething\MBStatTracker\StatHat;
+use DoSomething\MB_Toolbox\MB_Toolbox_BaseConsumer;
+use DoSomething\MB_Toolbox\MB_Toolbox_cURL;
+use \Exception;
+
+/**
+ * MBC_UserAPI_CampaignActivity_Consumer class - functionality to process message entries in
+ * userAPICampaignActivityQueue. Message create POSTs to mb-user-api /user.
+ */
+
+class MBC_UserAPI_CampaignActivity_Consumer extends MB_Toolbox_BaseConsumer
 {
 
   /**
-   * Message Broker connection to RabbitMQ
+   * cURL object to access cUrl related methods
+   * @var object $mbToolboxcURL
    */
-  private $messageBroker;
+  protected $mbToolboxcURL;
 
   /**
-   * Setting from external services - Mailchimp.
-   *
-   * @var array
+   * The URLto POST to.
+   * @var string $curlUrl
    */
-  private $settings;
+  private $curlUrl;
 
   /**
-   * Setting from external services - Mailchimp.
-   *
-   * @var array
+   * The composed submission for POSTing to mb-user-api.
+   * @var string $submission
    */
-  private $statHat;
+  private $submission;
 
   /**
-   * Constructor for MBC_TransactionalEmail
-   *
-   * @param array $settings
-   *   Settings from external services - StatHat
+   * __construct(): Common values for class. The base class MB_Toolbox_BaseConsumer also
+   * contains properties in __construct().
    */
-  public function __construct($messageBroker, $settings) {
+  public function __construct() {
 
-    $this->messageBroker = $messageBroker;
-    $this->settings = $settings;
+    parent::__construct();
+    $this->mbConfig = MB_Configuration::getInstance();
+    $this->mbToolboxcURL = $this->mbConfig->getProperty('mbToolboxcURL');
+    $mbUserAPI = $this->mbConfig->getProperty('mb_user_api_config');
+    $this->curlUrl = $mbUserAPI['host'];
+    if (isset($mbUserAPI['port'])) {
+      $this->curlUrl .= ':' . $mbUserAPI['port'];
+    }
+    $this->curlUrl .= '/user';
+  }
 
-    $this->toolbox = new MB_Toolbox($settings);
-    $this->statHat = new StatHat($settings['stathat_ez_key'], 'mbc-userAPI-campaignActivity:');
-    $this->statHat->setIsProduction($settings['use_stathat_tracking'] ? $settings['use_stathat_tracking'] : FALSE);
+   /**
+   * Callback for messages arriving in the userAPICampaignActivityQueue.
+   *
+   * @param string $payload
+   *   A serialized message to be processed.
+   */
+  public function consumeUserAPICampaignActivityQueue($payload) {
+
+    echo '-------  mbc-userAPI-campaignActivity -  MBC_UserAPI_CampaignActivity_Consumer->consumeUserAPICampaignActivityQueue() START -------', PHP_EOL;
+
+    parent::consumeQueue($payload);
+    echo '** Consuming: ' . $this->message['email'], PHP_EOL;
+
+    if ($this->canProcess()) {
+
+      try {
+
+        $this->setter($this->message);
+        $this->process();
+      }
+      catch(Exception $e) {
+        echo 'Error submitting user campaign activity for email address: ' . $this->message['email'] . ' to mb-user-api. Error: ' . $e->getMessage();
+        $this->messageBroker->sendAck($this->message['payload']);
+      }
+
+    }
+    else {
+      echo '=> ' . $this->message['email'] . ' can\'t be processed.', PHP_EOL;
+      $this->messageBroker->sendAck($this->message['payload']);
+    }
+
+    echo '-------  mbc-userAPI-campaignActivity -  MBC_UserAPI_CampaignActivity_Consumer->consumeUserAPICampaignActivityQueue() END -------', PHP_EOL . PHP_EOL;
   }
 
   /**
-   * Submit user campaign activity to the UserAPI
+   * Conditions to test before processing the message.
    *
-   * @param array $payload
-   *   The contents of the queue entry
+   * @return boolean
    */
-  public function updateUserAPI($payload) {
+  protected function canProcess() {
 
-    $payloadDetails = unserialize($payload->body);
+  }
 
-    // There will only ever be one campaign entry in the payload
-    $post = array(
-      'email' => $payloadDetails['email'],
-      'subscribed' => 1,
-      'campaigns' => array(
-        0 => array(
-          'nid' => $payloadDetails['event_id'],
-        ),
-      )
-    );
+  /**
+   * Construct values for submission to mb-users-api service.
+   *
+   * @param array $message
+   *   The message to process based on what was collected from the queue being processed.
+   */
+  protected function setter($message) {
 
-    if (!(isset($payloadDetails['activity_timestamp']) && $payloadDetails['activity_timestamp'] != '' && is_int($payloadDetails['activity_timestamp']))) {
-      echo 'Invalid activity_timestamp value: ' . print_r($payloadDetails, TRUE), PHP_EOL;
-      $payloadDetails['activity_timestamp'] = time();
-    }
+  }
 
-    // Campaign signup or reportback?
-    if ($payloadDetails['activity'] == 'campaign_reportback') {
-      $post['campaigns'][0]['reportback'] = $payloadDetails['activity_timestamp'];
-    }
-    else {
-      $post['campaigns'][0]['signup'] = $payloadDetails['activity_timestamp'];
-    }
+  /**
+   * process(): POST formatted message values to mb-users-api /user.
+   */
+  protected function process() {
 
-    $curlUrl = $this->settings['ds_user_api_host'];
-    $port = $this->settings['ds_user_api_port'];
-    if ($port != 0) {
-      $curlUrl .= ":$port";
-    }
-    $curlUrl .= '/user';
-    $result = $this->toolbox->curlPOST($curlUrl, $post);
-
-    $this->statHat->clearAddedStatNames();
-    if ($result[1] == 200) {
-      $this->statHat->addStatName('success');
-    }
-    else {
-      echo '** FAILED to update campaign activity for email: ' . $post['email'], PHP_EOL;
-      echo '------- mbc-userAPI-campaignActivity - MBC_UserAPICampaignActivity: $post: ' . print_r($post, TRUE) . ' - ' . date('D M j G:i:s T Y') . ' -------', PHP_EOL . PHP_EOL;
-      $this->statHat->addStatName('update failed');
-    }
-    $this->statHat->reportCount(1);
   }
 
 }
