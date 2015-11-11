@@ -120,16 +120,19 @@ class MBC_UserAPI_CampaignActivity_Consumer extends MB_Toolbox_BaseConsumer
     }
 
     if (!(isset($this->message['activity_timestamp']))) {
-      echo '- canProcess(), activity_timestamp not set.', PHP_EOL;
-      return FALSE;
+      echo '- canProcess() WARNING, activity_timestamp not set: ' . print_r($message, TRUE), PHP_EOL;
     }
     if (isset($this->message['activity_timestamp']) && (!(is_int($this->message['activity_timestamp'])))) {
       echo '- canProcess(), activity_timestamp not valid.', PHP_EOL;
       return FALSE;
     }
 
-    return TRUE;
+    if (!(isset($this->message['event_id']))) {
+      echo '- canProcess(), event_id not set.', PHP_EOL;
+      return FALSE;
+    }
 
+    return TRUE;
   }
 
   /**
@@ -140,6 +143,28 @@ class MBC_UserAPI_CampaignActivity_Consumer extends MB_Toolbox_BaseConsumer
    */
   protected function setter($message) {
 
+    // There will only ever be one campaign entry in the payload
+    $this->submission = array(
+      'email' => $message['email'],
+      'subscribed' => 1,
+      'campaigns' => array(
+        0 => array(
+          'nid' => $message['event_id'],
+        ),
+      )
+    );
+
+    if (!(isset($message['activity_timestamp']))) {
+      $this->submission['activity_timestamp'] = time();
+    }
+
+    // Campaign signup or reportback?
+    if ($message['activity'] == 'campaign_reportback') {
+      $this->submission['campaigns'][0]['reportback'] = $message['activity_timestamp'];
+    }
+    else {
+      $this->submission['campaigns'][0]['signup'] = $message['activity_timestamp'];
+    }
   }
 
   /**
