@@ -96,6 +96,40 @@ class MBC_UserAPI_CampaignActivity_Consumer extends MB_Toolbox_BaseConsumer
    */
   protected function canProcess() {
 
+    if (!(isset($this->message['email']))) {
+      echo '- canProcess(), email not set.', PHP_EOL;
+      return FALSE;
+    }
+    // Don't process 1234@mobile email address (legacy hack in Drupal app to support mobile registrations)
+    // BUT allow processing email addresses: joe@mobilemaster.com
+    $mobilePos = strpos($this->message['email'], '@mobile');
+    if ($mobilePos > 0 && (strlen($this->message['email']) - $mobilePos) > 7) {
+      echo '- canProcess(), Drupal app fake @mobile email address.', PHP_EOL;
+      return FALSE;
+    }
+
+    if (!(isset($this->message['activity']))) {
+      echo '- canProcess(), activity not set.', PHP_EOL;
+      return FALSE;
+    }
+    if (isset($this->message['activity'])) {
+      if ($this->message['activity'] != 'campaign_signup' || $this->message['activity'] != 'campaign_reportback') {
+        echo '- canProcess(), not campaign_signup or campaign_reportback activity.', PHP_EOL;
+        return FALSE;
+      }
+    }
+
+    if (!(isset($this->message['activity_timestamp']))) {
+      echo '- canProcess(), activity_timestamp not set.', PHP_EOL;
+      return FALSE;
+    }
+    if (isset($this->message['activity_timestamp']) && (!(is_int($this->message['activity_timestamp'])))) {
+      echo '- canProcess(), activity_timestamp not valid.', PHP_EOL;
+      return FALSE;
+    }
+
+    return TRUE;
+
   }
 
   /**
@@ -113,6 +147,16 @@ class MBC_UserAPI_CampaignActivity_Consumer extends MB_Toolbox_BaseConsumer
    */
   protected function process() {
 
+    echo '-> post: ' . print_r($this->submission, TRUE) . ' - ' . date('j D M Y G:i:s Y') . ' -------', PHP_EOL;
+
+    $results = $this->mbToolboxcURL->curlPOST($this->curlUrl, $this->submission);
+    if ($results[1] == 200) {
+      $this->messageBroker->sendAck($this->message['payload']);
+    }
+    else {
+      echo '- mb-user-api ERROR: ' . print_r($results[0], TRUE), PHP_EOL;
+      throw new Exception('Error submitting campaign activity to mb-user-api: ' . print_r($this->submission, TRUE));
+    }
   }
 
 }
