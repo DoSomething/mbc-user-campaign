@@ -1,24 +1,44 @@
 {
-    "name": "https://github.com/DoSomething/mbc-userAPI-campaignActivity",
-    "type": "project",
-    "version": "0.2.0",
-    "description": "A consumer app for the Message Broker system that consumes entries on the userAPICampaignActivityQueue to make entries / updates to the UserAPI / database.",
-    "keywords": ["message broker"],
-    "homepage": "https://github.com/DoSomething/mbc-user-campaign",
-    "license" : "MIT",
-    "authors": [
+  "name": "mbc-userAPI-campaignActivity",
+  "type": "project",
+  "version": "0.3.0",
+  "description": "A consumer app for the Message Broker system that consumes entries on the userAPICampaignActivityQueue to make entries / updates to the mb-user-api.",
+  "keywords": ["message broker"],
+  "homepage": "https://github.com/DoSomething/mbc-userAPI-campaignActivity",
+  "license" : "MIT",
+  "authors": [
     {
       "name": "DoSomething and contributors",
       "homepage": "http://www.dosomething.org"
     }
-    ],
-    "require": {
-        "php": ">= 5.3.0",
-        "DoSomething/messagebroker-phplib": "0.2.*",
-        "dosomething/mb-toolbox": "0.4.*",
-        "dosomething/mb-stat-tracker": "v0.0.3"
-    },
-    "require-dev": {
-      "phpunit/phpunit": "3.7.*"
+  ],
+  "require": {
+    "php": ">= 5.3.0",
+    "DoSomething/messagebroker-phplib": "0.2.*",
+    "dosomething/mb-toolbox": "0.8.*",
+    "dosomething/stathat": "1.*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "4.0.*"
+  },
+  "autoload": {
+    "psr-4": {
+      "DoSomething\\MBC_UserAPI_CampaignActivity\\": "src/"
     }
+  },
+  "scripts": {
+    "pre-install-cmd": [
+      "./bin/install.sh"
+    ],
+    "pre-package-update": [
+      "git checkout master",
+      "git pull"
+    ],
+    "post-package-update": [
+      "./vendor/bin/phpunit tests"
+    ],
+    "post-package-uninstall": [
+      "./bin/uninstall.sh"
+    ]
+  }
 }
