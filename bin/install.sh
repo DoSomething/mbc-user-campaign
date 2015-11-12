@@ -1,6 +1,6 @@
 #!/bin/bash
 ##
-# Installation script for mbp-userAPI-campaignActivity
+# Installation script for mbc-userAPI-campaignActivity
 ##
 
 # Assume messagebroker-config repo is one directory up
@@ -9,8 +9,9 @@ cd ../messagebroker-config
 # Gather path from root
 MBCONFIG=`pwd`
 
-# Back to mbp-user-import
-cd ../mbp-userAPI-campaignActivity
+# Back tombc-userAPI-campaignActivity
+cd ../mbc-userAPI-campaignActivity
 
-# Create SymLink for mbp-user-import application to make reference to for all Message Broker configuration settings
+# Create SymLink for mbc-userAPI-campaignActivity application to make reference to
+# for all Message Broker configuration settings
 ln -s $MBCONFIG .
