@@ -76,7 +76,7 @@ class MBC_UserAPI_CampaignActivity_Consumer extends MB_Toolbox_BaseConsumer
         $this->process();
       }
       catch(Exception $e) {
-        echo 'Error submitting user campaign activity for email address: ' . $this->message['email'] . ' to mb-user-api. Error: ' . $e->getMessage();
+        echo $e->getMessage() . PHP_EOL . PHP_EOL;
         $this->messageBroker->sendAck($this->message['payload']);
       }
 
@@ -113,7 +113,7 @@ class MBC_UserAPI_CampaignActivity_Consumer extends MB_Toolbox_BaseConsumer
       return FALSE;
     }
     if (isset($this->message['activity'])) {
-      if ($this->message['activity'] != 'campaign_signup' || $this->message['activity'] != 'campaign_reportback') {
+      if ($this->message['activity'] != 'campaign_signup' && $this->message['activity'] != 'campaign_reportback') {
         echo '- canProcess(), not campaign_signup or campaign_reportback activity.', PHP_EOL;
         return FALSE;
       }
@@ -171,8 +171,6 @@ class MBC_UserAPI_CampaignActivity_Consumer extends MB_Toolbox_BaseConsumer
    * process(): POST formatted message values to mb-users-api /user.
    */
   protected function process() {
-
-    echo '-> post: ' . print_r($this->submission, TRUE) . ' - ' . date('j D M Y G:i:s Y') . ' -------', PHP_EOL;
 
     $results = $this->mbToolboxcURL->curlPOST($this->curlUrl, $this->submission);
     if ($results[1] == 200) {
