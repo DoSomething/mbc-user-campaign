@@ -66,7 +66,7 @@ class MBC_UserAPI_CampaignActivity_Consumer extends MB_Toolbox_BaseConsumer
     echo '-------  mbc-userAPI-campaignActivity -  MBC_UserAPI_CampaignActivity_Consumer->consumeUserAPICampaignActivityQueue() START -------', PHP_EOL;
 
     parent::consumeQueue($payload);
-    echo '** Consuming: ' . $this->message['email'], PHP_EOL;
+    $this->logConsumption('email');
 
     if ($this->canProcess()) {
 
@@ -77,7 +77,6 @@ class MBC_UserAPI_CampaignActivity_Consumer extends MB_Toolbox_BaseConsumer
       }
       catch(Exception $e) {
         echo $e->getMessage() . PHP_EOL . PHP_EOL;
-        $this->messageBroker->sendAck($this->message['payload']);
       }
 
     }
@@ -85,6 +84,10 @@ class MBC_UserAPI_CampaignActivity_Consumer extends MB_Toolbox_BaseConsumer
       echo '=> ' . $this->message['email'] . ' can\'t be processed.', PHP_EOL;
       $this->messageBroker->sendAck($this->message['payload']);
     }
+
+    // @todo: Throttle the number of consumers running. Based on the number of messages
+    // waiting to be processed start / stop consumers. Make "reactive"!
+    $queueStatus = parent::queueStatus('userAPICampaignActivityQueue');
 
     echo '-------  mbc-userAPI-campaignActivity -  MBC_UserAPI_CampaignActivity_Consumer->consumeUserAPICampaignActivityQueue() END -------', PHP_EOL . PHP_EOL;
   }
@@ -103,7 +106,8 @@ class MBC_UserAPI_CampaignActivity_Consumer extends MB_Toolbox_BaseConsumer
     // Don't process 1234@mobile email address (legacy hack in Drupal app to support mobile registrations)
     // BUT allow processing email addresses: joe@mobilemaster.com
     $mobilePos = strpos($this->message['email'], '@mobile');
-    if ($mobilePos > 0 && (strlen($this->message['email']) - $mobilePos) > 7) {
+    $isEmail = strlen($this->message['email']) - $mobilePos - 7;
+    if ($mobilePos > 0 && $isEmail == FALSE) {
       echo '- canProcess(), Drupal app fake @mobile email address.', PHP_EOL;
       return FALSE;
     }
@@ -154,10 +158,12 @@ class MBC_UserAPI_CampaignActivity_Consumer extends MB_Toolbox_BaseConsumer
       )
     );
 
-    if (!(isset($message['activity_timestamp']))) {
-      $this->submission['activity_timestamp'] = time();
+    if (isset($message['campaign_language'])) {
+      $this->submission['campaigns'][0]['language'] = $message['campaign_language'];
     }
-
+    if (!(isset($message['activity_timestamp']))) {
+      $message['activity_timestamp'] = time();
+    }
     // Campaign signup or reportback?
     if ($message['activity'] == 'campaign_reportback') {
       $this->submission['campaigns'][0]['reportback'] = $message['activity_timestamp'];
@@ -179,6 +185,26 @@ class MBC_UserAPI_CampaignActivity_Consumer extends MB_Toolbox_BaseConsumer
     else {
       echo '- mb-user-api ERROR: ' . print_r($results[0], TRUE), PHP_EOL;
       throw new Exception('Error submitting campaign activity to mb-user-api: ' . print_r($this->submission, TRUE));
+    }
+  }
+
+  /**
+   * logConsumption(): Extended to log the status of processing a specific message
+   * element as well as the campaign_language and country.
+   *
+   * @param string $targetName
+   */
+  protected function logConsumption($targetName) {
+
+    if ($targetName != NULL) {
+      echo '** Consuming ' . $targetName . ': ' . $this->message[$targetName];
+      if (isset($this->message['campaign_language'])) {
+        echo ' doing: ' . $this->message['activity'] . ' in: ' .  $this->message['campaign_language'], PHP_EOL;
+      } else {
+        echo ', campaign_language not defined.', PHP_EOL;
+      }
+    } else {
+      echo $targetName . ' is not defined.', PHP_EOL;
     }
   }
 
